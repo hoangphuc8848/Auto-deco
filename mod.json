@@ -1,0 +1,12 @@
+{
+  "geode": "v5.10.1",
+  "gd": {
+    "android": "2.2081"
+  },
+  "id": "hoangphuc8848.auto-deco",
+  "name": "Auto Deco",
+  "version": "v0.1.0",
+  "developer": "hoangphuc8848",
+  "description": "Auto decoration for Geometry Dash levels (early build).",
+  "tags": ["editor"]
+}
