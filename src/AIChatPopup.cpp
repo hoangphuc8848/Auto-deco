@@ -141,8 +141,8 @@ void AIChatPopup::onSend(CCObject*) {
         "{\"kind\":\"trigger\",\"triggerType\":\"move\",\"id\":901,\"x\":100,\"y\":100,\"groupID\":1,\"targetGroupID\":2,\"moveX\":30,\"moveY\":0,\"duration\":1,\"easing\":0}, "
         "{\"kind\":\"trigger\",\"triggerType\":\"alpha\",\"id\":1007,\"x\":100,\"y\":100,\"groupID\":1,\"opacity\":0.5,\"duration\":1}, "
         "{\"kind\":\"trigger\",\"triggerType\":\"toggle\",\"id\":1049,\"x\":100,\"y\":100,\"groupID\":1,\"activateGroup\":false}, "
-        "{\"kind\":\"trigger\",\"triggerType\":\"color\",\"id\":899,\"x\":100,\"y\":100,\"groupID\":1,\"colorID\":1}]}. "
-        "Trigger types supported in the plan schema: alpha (groupID, opacity 0..1, duration), move (targetGroupID, moveX, moveY, duration, easing), toggle (groupID, activateGroup boolean), color (groupID, colorID 1..1014). Use the correct Geometry Dash trigger object IDs. The editor application of trigger specifications is still gated pending SDK field-binding verification. "
+        "{\"kind\":\"trigger\",\"triggerType\":\"color\",\"id\":899,\"x\":100,\"y\":100,\"groupID\":1,\"colorID\":1,\"colorR\":80,\"colorG\":180,\"colorB\":255}]}. "
+        "Currently implement only move (targetGroupID, moveX, moveY, duration, easing) and color (groupID, colorID 1..999, colorR, colorG, colorB each 0..255, duration). Use move object ID 901 and color object ID 899. Do not output alpha or toggle triggers. "
         "At most 200 items. All values must be finite. IDs 1..5000. Coordinates must be inside bounds. Trigger group IDs and target IDs 0..9999, "
         "duration 0..600, easing 0..99. Do not invent unsupported trigger properties or output markdown.";
 
@@ -219,22 +219,47 @@ void AIChatPopup::onApply(CCObject*) {
     if (!m_editorLayer) { m_status->setString("Editor is no longer available."); return; }
     if (m_validatedPlan.items.empty()) { m_status->setString("Ask AI first to generate a plan."); return; }
 
+    int made = 0, triggersMade = 0;
     for (auto const& item : m_validatedPlan.items) {
-        if (item.kind == auto_deco::PlannedObject::Kind::Trigger) {
-            m_status->setString("Safe stop: trigger plan parsed, but trigger placement is not enabled yet. No objects applied.");
+        if (item.kind == auto_deco::PlannedObject::Kind::Object) {
+            auto object = m_editorLayer->createObject(item.id, {item.x, item.y}, false);
+            if (!object) continue;
+            object->setScale(item.scale);
+            object->setRotation(item.rotation);
+            ++made;
+            continue;
+        }
+
+        if (item.triggerType != auto_deco::PlannedObject::TriggerType::Move &&
+            item.triggerType != auto_deco::PlannedObject::TriggerType::Color) {
+            m_status->setString("Only Move and Color triggers are supported by Apply right now.");
             return;
         }
-    }
 
-    int made = 0;
-    for (auto const& p : m_plan) {
-        auto object = m_editorLayer->createObject(p.id, {p.x, p.y}, false);
-        if (!object) continue;
-        object->setScale(p.scale);
-        object->setRotation(p.rotation);
-        ++made;
+        int triggerID = item.triggerType == auto_deco::PlannedObject::TriggerType::Move ? 901 : 899;
+        auto base = m_editorLayer->createObject(triggerID, {item.x, item.y}, false);
+        auto trigger = typeinfo_cast<EffectGameObject*>(base);
+        if (!trigger) {
+            if (base) base->removeFromParentAndCleanup(true);
+            continue;
+        }
+        trigger->setTargetID(item.triggerType == auto_deco::PlannedObject::TriggerType::Move
+            ? item.targetGroupID : item.groupID);
+        trigger->m_duration = item.duration;
+        if (item.triggerType == auto_deco::PlannedObject::TriggerType::Move) {
+            trigger->m_moveOffset = {item.moveX, item.moveY};
+            trigger->m_easingType = static_cast<EasingType>(item.easing);
+        } else {
+            trigger->m_targetColor = item.colorID;
+            trigger->m_triggerTargetColor = cocos2d::ccColor3B{
+                static_cast<GLubyte>(item.colorR),
+                static_cast<GLubyte>(item.colorG),
+                static_cast<GLubyte>(item.colorB)
+            };
+        }
+        ++triggersMade;
     }
     m_plan.clear();
     m_validatedPlan = auto_deco::Plan{};
-    m_status->setString(("Applied " + std::to_string(made) + " objects. Use Undo to revert.").c_str());
+    m_status->setString(("Applied " + std::to_string(made) + " objects and " + std::to_string(triggersMade) + " Move/Color triggers. Use Undo to revert.").c_str());
 }
