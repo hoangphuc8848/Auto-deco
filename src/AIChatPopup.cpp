@@ -138,9 +138,11 @@ void AIChatPopup::onSend(CCObject*) {
         "Use trigger plans only when properties are explicitly supported in the plan. Return JSON only: "
         "{\"message\":\"short answer in the user's language\",\"placements\":["
         "{\"kind\":\"object\",\"id\":1,\"x\":100,\"y\":100,\"scale\":1,\"rotation\":0},"
-        "{\"kind\":\"trigger\",\"id\":901,\"x\":100,\"y\":100,\"scale\":1,\"rotation\":0,"
-        "\"groupID\":1,\"targetGroupID\":2,\"duration\":1,\"easing\":0,\"properties\":{}}]}. "
-        "The kind object is ordinary gameplay or decoration. kind trigger is a structured trigger plan, not a claim that trigger creation is implemented. "
+        "{\"kind\":\"trigger\",\"triggerType\":\"move\",\"id\":901,\"x\":100,\"y\":100,\"groupID\":1,\"targetGroupID\":2,\"moveX\":30,\"moveY\":0,\"duration\":1,\"easing\":0}, "
+        "{\"kind\":\"trigger\",\"triggerType\":\"alpha\",\"id\":1007,\"x\":100,\"y\":100,\"groupID\":1,\"opacity\":0.5,\"duration\":1}, "
+        "{\"kind\":\"trigger\",\"triggerType\":\"toggle\",\"id\":1049,\"x\":100,\"y\":100,\"groupID\":1,\"activateGroup\":false}, "
+        "{\"kind\":\"trigger\",\"triggerType\":\"color\",\"id\":899,\"x\":100,\"y\":100,\"groupID\":1,\"colorID\":1}]}. "
+        "Trigger types supported in the plan schema: alpha (groupID, opacity 0..1, duration), move (targetGroupID, moveX, moveY, duration, easing), toggle (groupID, activateGroup boolean), color (groupID, colorID 1..1014). Use the correct Geometry Dash trigger object IDs. The editor application of trigger specifications is still gated pending SDK field-binding verification. "
         "At most 200 items. All values must be finite. IDs 1..5000. Coordinates must be inside bounds. Trigger group IDs and target IDs 0..9999, "
         "duration 0..600, easing 0..99. Do not invent unsupported trigger properties or output markdown.";
 
