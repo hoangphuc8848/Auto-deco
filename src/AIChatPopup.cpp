@@ -135,7 +135,7 @@ void AIChatPopup::onSaveKey(CCObject*) {
 }
 
 void AIChatPopup::onSend(CCObject*) {
-    auto key = m_keyInput->getString();
+    std::string key = m_keyInput->getString().c_str();
     std::string prompt = m_promptInput->getString().c_str();
     if (key.empty()) { m_status->setString("Enter your OpenAI API key first."); return; }
     if (prompt.empty()) { m_status->setString("Type a build/deco request first."); return; }
