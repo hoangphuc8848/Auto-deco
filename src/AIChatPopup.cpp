@@ -91,7 +91,9 @@ bool AIChatPopup::init() {
     keyLabel->setPosition({22.f, 210.f}); m_mainLayer->addChild(keyLabel);
 
     m_keyInput = TextInput::create(310.f, "Paste API key here", "chatFont.fnt");
-    m_keyInput->setPosition({180.f, 185.f}); m_keyInput->setPasswordMode(true);
+    m_keyInput->setPosition({180.f, 185.f});
+    m_keyInput->setPasswordMode(true);
+    m_keyInput->setCommonFilter(CommonFilter::Any); // Allow API key characters such as '-', '_', and '.'
     m_keyInput->setMaxCharCount(240);
     m_keyInput->setString(Mod::get()->getSavedValue<std::string>("openai_api_key", ""));
     m_mainLayer->addChild(m_keyInput);
