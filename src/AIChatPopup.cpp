@@ -165,6 +165,10 @@ void AIChatPopup::onSend(CCObject*) {
     auto request = web::WebRequest()
         .header("Authorization", std::string("Bearer ") + key)
         .bodyJSON(body)
+        // Geode stores repeated headers; clear any Content-Type added while
+        // serializing JSON, then set exactly one value for the OpenAI endpoint.
+        .removeHeader("Content-Type")
+        .header("Content-Type", "application/json")
         .timeout(std::chrono::seconds(60));
 
     Ref<AIChatPopup> self(this);
