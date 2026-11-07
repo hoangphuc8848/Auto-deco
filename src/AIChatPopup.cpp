@@ -151,10 +151,14 @@ void AIChatPopup::onSend(CCObject*) {
     body["model"] = "gpt-5.5";
     body["store"] = false;
     body["instructions"] =
-        "You generate safe Geometry Dash editor object placement plans. Reply ONLY with one JSON object: "
-        "{\"message\":\"short explanation in the user's language\",\"placements\":[{\"id\":1,\"x\":100,\"y\":100,\"scale\":1,\"rotation\":0}]}. "
-        "Use at most 100 placements. Use only ordinary Geometry Dash object IDs from 1 to 5000. "
-        "Coordinates must stay inside the supplied bounds. Do not use markdown fences. No scripts or commands.";
+        "You are the single all-in-one Geometry Dash level editor assistant. The user describes a level in natural language; "
+        "you must plan BOTH gameplay/build geometry AND matching decoration in one pass. Do not separate build and deco into modes. "
+        "Create a coherent playable layout first (platforms, gaps, hazards, orbs and other gameplay objects as appropriate), "
+        "then add decoration that matches the requested theme, colors and mood. Avoid random clutter and overlapping objects. "
+        "Reply ONLY with one JSON object: "
+        "{\\\"message\\\":\\\"short explanation in the user's language\\\",\\\"placements\\\":[{\\\"id\\\":1,\\\"x\\\":100,\\\"y\\\":100,\\\"scale\\\":1,\\\"rotation\\\":0}]}. "
+        "Use at most 100 placements. Use only Geometry Dash editor object IDs from 1 to 116. "
+        "Coordinates must stay inside the supplied bounds. Do not use markdown fences, scripts or commands.";
     body["input"] = prompt + "\nEditor bounds: x=[" + std::to_string(m_minX) + "," +
         std::to_string(m_maxX) + "], y=[" + std::to_string(m_minY) + "," + std::to_string(m_maxY) +
         "]. Make a coherent build/deco plan inside these bounds.";
