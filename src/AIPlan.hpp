@@ -15,6 +15,7 @@ struct PlannedObject {
     int id = 1;
     float x = 0.f, y = 0.f, scale = 1.f, rotation = 0.f;
     int groupID = 0, targetGroupID = 0, colorID = 1;
+    int colorR = 255, colorG = 255, colorB = 255;
     bool activateGroup = false;
     float duration = 0.f, moveX = 0.f, moveY = 0.f, opacity = 1.f;
     int easing = 0;
@@ -97,7 +98,10 @@ inline bool parsePlanJSON(std::string const& text, Plan& out) {
             if (p.triggerType == PlannedObject::TriggerType::Move &&
                 !readBoundedInt(item, "targetGroupID", 0, 9999, p.targetGroupID)) return false;
             if (p.triggerType == PlannedObject::TriggerType::Color &&
-                !readBoundedInt(item, "colorID", 1, 1014, p.colorID)) return false;
+                (!readBoundedInt(item, "colorID", 1, 999, p.colorID) ||
+                 !readBoundedInt(item, "colorR", 0, 255, p.colorR) ||
+                 !readBoundedInt(item, "colorG", 0, 255, p.colorG) ||
+                 !readBoundedInt(item, "colorB", 0, 255, p.colorB))) return false;
             if (item.contains("activateGroup")) {
                 if (!item["activateGroup"].isBool()) return false;
                 auto active = item["activateGroup"].asBool();
