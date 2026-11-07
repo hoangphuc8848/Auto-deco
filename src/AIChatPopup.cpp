@@ -44,27 +44,57 @@ namespace {
     }
 
     bool parsePlan(std::string const& text, std::vector<AIChatPopup::Placement>& out) {
-        auto start = text.find("\"placements\"");
-        if (start == std::string::npos) return false;
-        start = text.find('[', start);
-        auto end = text.find(']', start);
-        if (start == std::string::npos || end == std::string::npos) return false;
-        std::string array = text.substr(start + 1, end - start - 1);
-        std::regex itemPattern("\\{[^\\}]*\\}");
-        for (std::sregex_iterator it(array.begin(), array.end(), itemPattern), last; it != last; ++it) {
-            if (out.size() >= 200) break;
-            auto item = it->str();
-            float id = 0, x = 0, y = 0, scale = 1, rotation = 0;
-            if (!readNumber(item, "id", id) || !readNumber(item, "x", x) || !readNumber(item, "y", y)) continue;
-            readNumber(item, "scale", scale);
-            readNumber(item, "rotation", rotation);
-            AIChatPopup::Placement p;
-            p.id = static_cast<int>(id);
-            p.x = x; p.y = y;
-            p.scale = std::clamp(scale, 0.25f, 2.5f);
-            p.rotation = std::clamp(rotation, -360.f, 360.f);
-            if (p.id < 1 || p.id > 5000) continue;
-            out.push_back(p);
+        // Find the placements array, then scan JSON structurally. The former
+        // regex stopped at the first ']' and failed on nested values/strings.
+        auto key = text.find("\\\"placements\\\"");
+        if (key == std::string::npos) return false;
+        auto arrayStart = text.find('[', key);
+        if (arrayStart == std::string::npos) return false;
+
+        bool inString = false;
+        bool escaped = false;
+        int objectDepth = 0;
+        size_t objectStart = std::string::npos;
+        for (size_t i = arrayStart + 1; i < text.size(); ++i) {
+            char c = text[i];
+            if (inString) {
+                if (escaped) escaped = false;
+                else if (c == '\\\\') escaped = true;
+                else if (c == '"') inString = false;
+                continue;
+            }
+            if (c == '"') { inString = true; continue; }
+            if (c == '{') {
+                if (objectDepth == 0) objectStart = i;
+                ++objectDepth;
+            } else if (c == '}') {
+                if (objectDepth <= 0) return false;
+                --objectDepth;
+                if (objectDepth == 0 && objectStart != std::string::npos) {
+                    auto item = text.substr(objectStart, i - objectStart + 1);
+                    float id = 0, x = 0, y = 0, scale = 1, rotation = 0;
+                    if (readNumber(item, "id", id) &&
+                        readNumber(item, "x", x) &&
+                        readNumber(item, "y", y)) {
+                        readNumber(item, "scale", scale);
+                        readNumber(item, "rotation", rotation);
+                        AIChatPopup::Placement p;
+                        p.id = static_cast<int>(id);
+                        p.x = x;
+                        p.y = y;
+                        p.scale = std::clamp(scale, 0.25f, 2.5f);
+                        p.rotation = std::clamp(rotation, -360.f, 360.f);
+                        if (p.id >= 1 && p.id <= 5000 &&
+                            std::isfinite(p.x) && std::isfinite(p.y)) {
+                            out.push_back(p);
+                            if (out.size() >= 200) break;
+                        }
+                    }
+                    objectStart = std::string::npos;
+                }
+            } else if (c == ']' && objectDepth == 0) {
+                break;
+            }
         }
         return !out.empty();
     }
