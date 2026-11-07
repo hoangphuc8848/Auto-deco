@@ -44,15 +44,15 @@ class $modify(AutoDecoEditorUI, EditorUI) {
 
         auto size = cocos2d::CCDirector::sharedDirector()->getWinSize();
 
+        auto menu = cocos2d::CCMenu::create();
+        if (!menu) return true;
+
         auto chatSprite = ButtonSprite::create("AI CHAT", 76, 0, 0.65f, true, "goldFont.fnt", "GJ_button_04.png", 28.f);
         auto chatButton = CCMenuItemSpriteExtra::create(chatSprite, this, menu_selector(AutoDecoEditorUI::onAIChat));
         if (chatButton) {
             chatButton->setPosition({size.width - 52.f, size.height - 110.f});
             menu->addChild(chatButton);
         }
-        auto menu = cocos2d::CCMenu::create();
-        if (!menu) return true;
-
         auto decoSprite = ButtonSprite::create("AI DECO", 76, 0, 0.65f, true, "goldFont.fnt", "GJ_button_01.png", 28.f);
         auto decoButton = CCMenuItemSpriteExtra::create(decoSprite, this, menu_selector(AutoDecoEditorUI::onAutoDeco));
         if (decoButton) {
@@ -89,7 +89,7 @@ class $modify(AutoDecoEditorUI, EditorUI) {
     }
 
     void onAIChat(cocos2d::CCObject*) {
-        AIChatPopup::create()->show();
+        auto bounds = getTargetBounds();\n        if (!m_editorLayer || !bounds.valid) {\n            FLAlertLayer::create("AI Chat", "Add a layout first so AI has an area to work in.", "OK")->show();\n            return;\n        }\n        AIChatPopup::create(m_editorLayer, bounds.minX, bounds.maxX, bounds.minY, bounds.maxY)->show();
     }
 
     void onAutoDeco(cocos2d::CCObject*) {
