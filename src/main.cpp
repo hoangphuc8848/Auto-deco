@@ -89,7 +89,12 @@ class $modify(AutoDecoEditorUI, EditorUI) {
     }
 
     void onAIChat(cocos2d::CCObject*) {
-        auto bounds = getTargetBounds();\n        if (!m_editorLayer || !bounds.valid) {\n            FLAlertLayer::create("AI Chat", "Add a layout first so AI has an area to work in.", "OK")->show();\n            return;\n        }\n        AIChatPopup::create(m_editorLayer, bounds.minX, bounds.maxX, bounds.minY, bounds.maxY)->show();
+        auto bounds = getTargetBounds();
+        if (!m_editorLayer || !bounds.valid) {
+            FLAlertLayer::create("AI Chat", "Add a layout first so AI has an area to work in.", "OK")->show();
+            return;
+        }
+        AIChatPopup::create(m_editorLayer, bounds.minX, bounds.maxX, bounds.minY, bounds.maxY)->show();
     }
 
     void onAutoDeco(cocos2d::CCObject*) {
