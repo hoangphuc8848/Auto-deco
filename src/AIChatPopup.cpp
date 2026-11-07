@@ -127,6 +127,11 @@ void AIChatPopup::onSend(CCObject*) {
     matjson::Value body = matjson::Value::object();
     body["model"] = "gpt-5.5";
     body["store"] = false;
+    body["max_output_tokens"] = 12000;
+    matjson::Value textFormat = matjson::Value::object();
+    textFormat["format"] = matjson::Value::object();
+    textFormat["format"]["type"] = "json_object";
+    body["text"] = textFormat;
     body["instructions"] =
         "You are an expert Geometry Dash Editor AI. Preserve the recognizable existing layout while adding coherent gameplay and decoration. "
         "Aim for Demon-style challenge only when the user's request calls for it; never claim verified Demon difficulty without playtesting. "
