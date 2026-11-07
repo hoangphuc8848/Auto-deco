@@ -164,7 +164,6 @@ void AIChatPopup::onSend(CCObject*) {
 
     auto request = web::WebRequest()
         .header("Authorization", std::string("Bearer ") + key)
-        .header("Content-Type", "application/json")
         .bodyJSON(body)
         .timeout(std::chrono::seconds(60));
 
