@@ -1,13 +1,13 @@
 {
-  "geode": "5.10.1",
+  "geode": "5.11.1",
   "gd": {
-    "android": "2.2081"
+    "android": "2.2144"
   },
   "id": "hoangphuc8848.auto-deco",
   "name": "Auto Deco",
   "version": "v0.1.0",
   "developer": "hoangphuc8848",
-  "description": "Auto decoration for Geometry Dash levels (early build).",
+  "description": "In-editor AI chat powered by the OpenAI Responses API.",
   "tags": [
     "editor"
   ]
