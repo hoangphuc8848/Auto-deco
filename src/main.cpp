@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <random>
+#include "AIChatPopup.hpp"
 
 using namespace geode::prelude;
 
@@ -42,6 +43,13 @@ class $modify(AutoDecoEditorUI, EditorUI) {
         if (!EditorUI::init(editorLayer)) return false;
 
         auto size = cocos2d::CCDirector::sharedDirector()->getWinSize();
+
+        auto chatSprite = ButtonSprite::create("AI CHAT", 76, 0, 0.65f, true, "goldFont.fnt", "GJ_button_04.png", 28.f);
+        auto chatButton = CCMenuItemSpriteExtra::create(chatSprite, this, menu_selector(AutoDecoEditorUI::onAIChat));
+        if (chatButton) {
+            chatButton->setPosition({size.width - 52.f, size.height - 110.f});
+            menu->addChild(chatButton);
+        }
         auto menu = cocos2d::CCMenu::create();
         if (!menu) return true;
 
@@ -78,6 +86,10 @@ class $modify(AutoDecoEditorUI, EditorUI) {
             bounds.maxX = center + 180.f;
         }
         return bounds;
+    }
+
+    void onAIChat(cocos2d::CCObject*) {
+        AIChatPopup::create()->show();
     }
 
     void onAutoDeco(cocos2d::CCObject*) {
