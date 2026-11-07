@@ -62,7 +62,7 @@ namespace {
             p.x = x; p.y = y;
             p.scale = std::clamp(scale, 0.25f, 2.5f);
             p.rotation = std::clamp(rotation, -360.f, 360.f);
-            if (p.id < 1 || p.id > 5000) continue;
+            if (p.id < 1 || p.id > 116) continue;
             out.push_back(p);
         }
         return !out.empty();
