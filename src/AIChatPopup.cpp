@@ -77,7 +77,6 @@ bool AIChatPopup::init() {
     m_status = CCLabelBMFont::create("Ready. API usage is billed separately by OpenAI.", "chatFont.fnt");
     m_status->setScale(0.42f);
     m_status->setPosition({180.f, 66.f});
-    m_status->setWidth(320.f);
     m_mainLayer->addChild(m_status);
 
     auto menu = CCMenu::create();
@@ -124,7 +123,7 @@ void AIChatPopup::onSend(CCObject*) {
     m_status->setString("Thinking...");
 
     matjson::Value body = matjson::Value::object();
-    body["model"] = "gpt-5.4-mini";
+    body["model"] = "gpt-5.5";
     body["store"] = false;
     body["instructions"] = "You are an assistant inside the Geometry Dash level editor. Reply in the user's language. Explain how to build or decorate a level. Do not claim you changed the level; this chat currently only returns advice.";
     body["input"] = prompt;
