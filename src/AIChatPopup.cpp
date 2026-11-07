@@ -168,7 +168,12 @@ void AIChatPopup::onSend(CCObject*) {
         auto raw = response.string();
         if (!raw) { self->m_status->setString("Network error. Check internet connection."); return; }
         if (!response.ok()) {
-            self->m_status->setString(("OpenAI API error: HTTP " + std::to_string(response.code())).c_str());
+            // Show the API's actual error message instead of only its HTTP status.
+            // Keep the text bounded so a large server response cannot flood the popup.
+            std::string errorBody = raw.unwrap();
+            if (errorBody.size() > 280) errorBody.resize(280);
+            std::string status = "OpenAI API error HTTP " + std::to_string(response.code()) + ": " + errorBody;
+            self->m_status->setString(status.c_str());
             return;
         }
 
