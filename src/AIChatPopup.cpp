@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <regex>
+#include <sstream>
 
 using namespace geode::prelude;
 
@@ -51,7 +52,7 @@ namespace {
         std::string array = text.substr(start + 1, end - start - 1);
         std::regex itemPattern("\\{[^\\}]*\\}");
         for (std::sregex_iterator it(array.begin(), array.end(), itemPattern), last; it != last; ++it) {
-            if (out.size() >= 100) break;
+            if (out.size() >= 200) break;
             auto item = it->str();
             float id = 0, x = 0, y = 0, scale = 1, rotation = 0;
             if (!readNumber(item, "id", id) || !readNumber(item, "x", x) || !readNumber(item, "y", y)) continue;
@@ -62,7 +63,7 @@ namespace {
             p.x = x; p.y = y;
             p.scale = std::clamp(scale, 0.25f, 2.5f);
             p.rotation = std::clamp(rotation, -360.f, 360.f);
-            if (p.id < 1 || p.id > 116) continue;
+            if (p.id < 1 || p.id > 5000) continue;
             out.push_back(p);
         }
         return !out.empty();
@@ -151,17 +152,34 @@ void AIChatPopup::onSend(CCObject*) {
     body["model"] = "gpt-5.5";
     body["store"] = false;
     body["instructions"] =
-        "You are the single all-in-one Geometry Dash level editor assistant. The user describes a level in natural language; "
-        "you must plan BOTH gameplay/build geometry AND matching decoration in one pass. Do not separate build and deco into modes. "
-        "Create a coherent playable layout first (platforms, gaps, hazards, orbs and other gameplay objects as appropriate), "
-        "then add decoration that matches the requested theme, colors and mood. Avoid random clutter and overlapping objects. "
-        "Reply ONLY with one JSON object: "
+        "You are an expert Geometry Dash Demon level editor assistant. Automatically inspect the supplied existing-level snapshot; "
+        "do not pretend to see pixels or objects that are not in the snapshot. Infer the current layout from object IDs and coordinates. "
+        "Upgrade the EXISTING level rather than replacing it: preserve its recognizable structure, fill gameplay gaps, improve jumps, "
+        "hazard spacing and rhythm, and add coherent theme-matched decoration. Aim for a challenging Demon-style layout, but prioritize "
+        "playability and readable hitboxes over unfair or impossible gameplay. Add BOTH gameplay objects and decoration in the same plan. "
+        "Avoid duplicate spam, random clutter, and placing decoration over gameplay hazards. Reply ONLY with one JSON object: "
         "{\\\"message\\\":\\\"short explanation in the user's language\\\",\\\"placements\\\":[{\\\"id\\\":1,\\\"x\\\":100,\\\"y\\\":100,\\\"scale\\\":1,\\\"rotation\\\":0}]}. "
-        "Use at most 100 placements. Use only Geometry Dash editor object IDs from 1 to 116. "
-        "Coordinates must stay inside the supplied bounds. Do not use markdown fences, scripts or commands.";
-    body["input"] = prompt + "\nEditor bounds: x=[" + std::to_string(m_minX) + "," +
+        "Use at most 200 placements. Use valid Geometry Dash editor object IDs from 1 to 5000, choosing known standard gameplay/deco objects; "
+        "never invent IDs. Keep all coordinates inside the supplied bounds. No markdown, scripts, or commands.";
+    std::ostringstream snapshot;
+    auto existing = m_editorLayer ? m_editorLayer->getAllObjects() : nullptr;
+    int seen = 0;
+    if (existing) {
+        for (auto object : geode::cocos::CCArrayExt<GameObject, false>(existing)) {
+            if (!object || seen >= 250) continue;
+            auto pos = object->getPosition();
+            snapshot << "{id:" << object->m_objectID
+                     << ",x:" << pos.x << ",y:" << pos.y
+                     << ",rotation:" << object->getRotation()
+                     << ",scale:" << object->getScale() << "};";
+            ++seen;
+        }
+    }
+    body["input"] = prompt + "\\nExisting level snapshot (" + std::to_string(seen) +
+        " of up to 250 objects; each entry is object ID and transform): " + snapshot.str() +
+        "\\nEditor bounds: x=[" + std::to_string(m_minX) + "," +
         std::to_string(m_maxX) + "], y=[" + std::to_string(m_minY) + "," + std::to_string(m_maxY) +
-        "]. Make a coherent build/deco plan inside these bounds.";
+        "]. Analyze the snapshot, then return additions that buff gameplay and decoration together.";
 
     auto request = web::WebRequest()
         .header("Authorization", std::string("Bearer ") + key)
