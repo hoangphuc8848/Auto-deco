@@ -127,7 +127,7 @@ bool AIChatPopup::init() {
 }
 
 void AIChatPopup::onSaveKey(CCObject*) {
-    auto key = m_keyInput->getString();
+    std::string key = m_keyInput->getString().c_str();
     if (key.empty()) { m_status->setString("Enter your API key first."); return; }
     Mod::get()->setSavedValue<std::string>("openai_api_key", key);
     Mod::get()->saveData();
@@ -136,7 +136,7 @@ void AIChatPopup::onSaveKey(CCObject*) {
 
 void AIChatPopup::onSend(CCObject*) {
     auto key = m_keyInput->getString();
-    auto prompt = m_promptInput->getString();
+    std::string prompt = m_promptInput->getString().c_str();
     if (key.empty()) { m_status->setString("Enter your OpenAI API key first."); return; }
     if (prompt.empty()) { m_status->setString("Type a build/deco request first."); return; }
 
@@ -158,7 +158,7 @@ void AIChatPopup::onSend(CCObject*) {
         "]. Make a coherent build/deco plan inside these bounds.";
 
     auto request = web::WebRequest()
-        .header("Authorization", "Bearer " + key)
+        .header("Authorization", std::string("Bearer ") + key)
         .header("Content-Type", "application/json")
         .bodyJSON(body)
         .timeout(std::chrono::seconds(60));
