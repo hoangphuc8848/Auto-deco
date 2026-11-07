@@ -11,9 +11,10 @@ using namespace geode::prelude;
 
 namespace {
     std::string extractResponseText(std::string const& body) {
-        // Find an exact JSON text key and decode common escapes safely.
+        // Responses API JSON contains a plain "text" key. Match the actual
+        // JSON key (not an escaped quote sequence), then decode JSON escapes.
         size_t key = 0;
-        while ((key = body.find("\\\"text\\\"", key)) != std::string::npos) {
+        while ((key = body.find("\"text\"", key)) != std::string::npos) {
             size_t pos = key + 6;
             while (pos < body.size() && std::isspace(static_cast<unsigned char>(body[pos]))) ++pos;
             if (pos >= body.size() || body[pos++] != ':') { key += 6; continue; }
@@ -26,18 +27,18 @@ namespace {
                 char c = body[i];
                 if (escaped) {
                     switch (c) {
-                        case 'n': out += '\\n'; break;
-                        case 'r': out += '\\r'; break;
-                        case 't': out += '\\t'; break;
-                        case 'b': out += '\\b'; break;
-                        case 'f': out += '\\f'; break;
+                        case 'n': out += '\n'; break;
+                        case 'r': out += '\r'; break;
+                        case 't': out += '\t'; break;
+                        case 'b': out += '\b'; break;
+                        case 'f': out += '\f'; break;
                         case '"': out += '"'; break;
-                        case '\\\\': out += '\\\\'; break;
+                        case '\\': out += '\\'; break;
                         case '/': out += '/'; break;
                         default: out += c; break;
                     }
                     escaped = false;
-                } else if (c == '\\\\') escaped = true;
+                } else if (c == '\\') escaped = true;
                 else if (c == '"') return out;
                 else out += c;
             }
