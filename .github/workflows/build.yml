@@ -1,0 +1,24 @@
+name: Build Geode mod
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build-android64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build .geode (Android64)
+        id: build
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          target: Android64
+
+      - name: Upload .geode artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-deco-android64
+          path: ${{ steps.build.outputs.build-output }}/*.geode
