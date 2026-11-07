@@ -11,30 +11,39 @@ using namespace geode::prelude;
 
 namespace {
     std::string extractResponseText(std::string const& body) {
-        // Responses API emits output[].content[].text. Retain the guarded
-        // extraction for now; the strict plan parser below validates the payload.
-        auto key = body.find("\"text\":");
-        if (key == std::string::npos) return {};
-        auto start = body.find('"', key + 7);
-        if (start == std::string::npos) return {};
-        ++start;
-        std::string out;
-        bool escaped = false;
-        for (size_t i = start; i < body.size(); ++i) {
-            char c = body[i];
-            if (escaped) {
-                switch (c) {
-                    case 'n': out += '\n'; break;
-                    case 'r': out += '\r'; break;
-                    case 't': out += '\t'; break;
-                    default: out += c; break;
-                }
-                escaped = false;
-            } else if (c == '\\') escaped = true;
-            else if (c == '"') break;
-            else out += c;
+        // Find an exact JSON text key and decode common escapes safely.
+        size_t key = 0;
+        while ((key = body.find("\\\"text\\\"", key)) != std::string::npos) {
+            size_t pos = key + 6;
+            while (pos < body.size() && std::isspace(static_cast<unsigned char>(body[pos]))) ++pos;
+            if (pos >= body.size() || body[pos++] != ':') { key += 6; continue; }
+            while (pos < body.size() && std::isspace(static_cast<unsigned char>(body[pos]))) ++pos;
+            if (pos >= body.size() || body[pos++] != '"') { key += 6; continue; }
+
+            std::string out;
+            bool escaped = false;
+            for (size_t i = pos; i < body.size(); ++i) {
+                char c = body[i];
+                if (escaped) {
+                    switch (c) {
+                        case 'n': out += '\\n'; break;
+                        case 'r': out += '\\r'; break;
+                        case 't': out += '\\t'; break;
+                        case 'b': out += '\\b'; break;
+                        case 'f': out += '\\f'; break;
+                        case '"': out += '"'; break;
+                        case '\\\\': out += '\\\\'; break;
+                        case '/': out += '/'; break;
+                        default: out += c; break;
+                    }
+                    escaped = false;
+                } else if (c == '\\\\') escaped = true;
+                else if (c == '"') return out;
+                else out += c;
+            }
+            return {};
         }
-        return out;
+        return {};
     }
 }
 
