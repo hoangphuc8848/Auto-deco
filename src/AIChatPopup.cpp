@@ -175,9 +175,9 @@ void AIChatPopup::onSend(CCObject*) {
             ++seen;
         }
     }
-    body["input"] = prompt + "\\nExisting level snapshot (" + std::to_string(seen) +
+    body["input"] = prompt + "\nExisting level snapshot (" + std::to_string(seen) +
         " of up to 250 objects; each entry is object ID and transform): " + snapshot.str() +
-        "\\nEditor bounds: x=[" + std::to_string(m_minX) + "," +
+        "\nEditor bounds: x=[" + std::to_string(m_minX) + "," +
         std::to_string(m_maxX) + "], y=[" + std::to_string(m_minY) + "," + std::to_string(m_maxY) +
         "]. Analyze the snapshot, then return additions that buff gameplay and decoration together.";
 
