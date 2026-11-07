@@ -9,11 +9,14 @@ namespace auto_deco {
 
 struct PlannedObject {
     enum class Kind { Object, Trigger };
+    enum class TriggerType { Alpha, Move, Toggle, Color };
     Kind kind = Kind::Object;
+    TriggerType triggerType = TriggerType::Alpha;
     int id = 1;
     float x = 0.f, y = 0.f, scale = 1.f, rotation = 0.f;
-    int groupID = 0, targetGroupID = 0;
-    float duration = 0.f;
+    int groupID = 0, targetGroupID = 0, colorID = 1;
+    bool activateGroup = false;
+    float duration = 0.f, moveX = 0.f, moveY = 0.f, opacity = 1.f;
     int easing = 0;
     matjson::Value properties = matjson::Value::object();
 };
