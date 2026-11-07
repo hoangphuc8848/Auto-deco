@@ -248,7 +248,7 @@ void AIChatPopup::onApply(CCObject*) {
             ? item.targetGroupID : item.groupID);
         trigger->m_duration = item.duration;
         if (item.triggerType == auto_deco::PlannedObject::TriggerType::Move) {
-            trigger->m_moveOffset = {item.moveX, item.moveY};
+            trigger->m_moveOffset = cocos2d::CCPoint(item.moveX, item.moveY);
             trigger->m_easingType = static_cast<EasingType>(item.easing);
         } else {
             trigger->m_targetColor = item.colorID;
