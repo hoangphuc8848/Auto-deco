@@ -139,8 +139,6 @@ void AIChatPopup::onSend(CCObject*) {
         "{\"message\":\"short answer in the user's language\",\"placements\":["
         "{\"kind\":\"object\",\"id\":1,\"x\":100,\"y\":100,\"scale\":1,\"rotation\":0},"
         "{\"kind\":\"trigger\",\"triggerType\":\"move\",\"id\":901,\"x\":100,\"y\":100,\"groupID\":1,\"targetGroupID\":2,\"moveX\":30,\"moveY\":0,\"duration\":1,\"easing\":0}, "
-        "{\"kind\":\"trigger\",\"triggerType\":\"alpha\",\"id\":1007,\"x\":100,\"y\":100,\"groupID\":1,\"opacity\":0.5,\"duration\":1}, "
-        "{\"kind\":\"trigger\",\"triggerType\":\"toggle\",\"id\":1049,\"x\":100,\"y\":100,\"groupID\":1,\"activateGroup\":false}, "
         "{\"kind\":\"trigger\",\"triggerType\":\"color\",\"id\":899,\"x\":100,\"y\":100,\"groupID\":1,\"colorID\":1,\"colorR\":80,\"colorG\":180,\"colorB\":255}]}. "
         "Currently implement only move (targetGroupID, moveX, moveY, duration, easing) and color (groupID, colorID 1..999, colorR, colorG, colorB each 0..255, duration). Use move object ID 901 and color object ID 899. Do not output alpha or toggle triggers. "
         "At most 200 items. All values must be finite. IDs 1..5000. Coordinates must be inside bounds. Trigger group IDs and target IDs 0..9999, "
@@ -211,13 +209,22 @@ void AIChatPopup::onSend(CCObject*) {
         int triggers = static_cast<int>(self->m_validatedPlan.items.size() - self->m_plan.size());
         self->m_status->setString(("Validated plan: " + std::to_string(self->m_plan.size()) +
             " regular objects, " + std::to_string(triggers) +
-            " trigger specifications. Trigger Apply is not enabled until bindings are verified.").c_str());
+            " trigger specifications. Move and Color are ready to Apply.").c_str());
     });
 }
 
 void AIChatPopup::onApply(CCObject*) {
     if (!m_editorLayer) { m_status->setString("Editor is no longer available."); return; }
     if (m_validatedPlan.items.empty()) { m_status->setString("Ask AI first to generate a plan."); return; }
+
+    for (auto const& item : m_validatedPlan.items) {
+        if (item.kind == auto_deco::PlannedObject::Kind::Trigger &&
+            item.triggerType != auto_deco::PlannedObject::TriggerType::Move &&
+            item.triggerType != auto_deco::PlannedObject::TriggerType::Color) {
+            m_status->setString("Plan includes an unsupported trigger. Nothing was applied.");
+            return;
+        }
+    }
 
     int made = 0, triggersMade = 0;
     for (auto const& item : m_validatedPlan.items) {
@@ -228,12 +235,6 @@ void AIChatPopup::onApply(CCObject*) {
             object->setRotation(item.rotation);
             ++made;
             continue;
-        }
-
-        if (item.triggerType != auto_deco::PlannedObject::TriggerType::Move &&
-            item.triggerType != auto_deco::PlannedObject::TriggerType::Color) {
-            m_status->setString("Only Move and Color triggers are supported by Apply right now.");
-            return;
         }
 
         int triggerID = item.triggerType == auto_deco::PlannedObject::TriggerType::Move ? 901 : 899;
