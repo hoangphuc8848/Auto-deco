@@ -1,5 +1,5 @@
 {
-  "geode": "v5.10.1",
+  "geode": "5.10.1",
   "gd": {
     "android": "2.2081"
   },
@@ -8,5 +8,7 @@
   "version": "v0.1.0",
   "developer": "hoangphuc8848",
   "description": "Auto decoration for Geometry Dash levels (early build).",
-  "tags": ["editor"]
+  "tags": [
+    "editor"
+  ]
 }
