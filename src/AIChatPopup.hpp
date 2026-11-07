@@ -3,7 +3,7 @@
 #include <vector>
 
 class AIChatPopup : public geode::Popup {
-protected:
+public:
     struct Placement {
         int id = 1;
         float x = 0.f;
@@ -12,6 +12,7 @@ protected:
         float rotation = 0.f;
     };
 
+protected:
     LevelEditorLayer* m_editorLayer = nullptr;
     float m_minX = 0.f, m_maxX = 0.f, m_minY = 0.f, m_maxY = 0.f;
     geode::TextInput* m_keyInput = nullptr;
