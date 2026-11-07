@@ -9,18 +9,10 @@ namespace auto_deco {
 
 struct PlannedObject {
     enum class Kind { Object, Trigger };
-
     Kind kind = Kind::Object;
     int id = 1;
-    float x = 0.f;
-    float y = 0.f;
-    float scale = 1.f;
-    float rotation = 0.f;
-
-    // Trigger plan fields. Trigger-specific properties are retained as JSON
-    // until the corresponding EffectGameObject binding is verified/configured.
-    int groupID = 0;
-    int targetGroupID = 0;
+    float x = 0.f, y = 0.f, scale = 1.f, rotation = 0.f;
+    int groupID = 0, targetGroupID = 0;
     float duration = 0.f;
     int easing = 0;
     matjson::Value properties = matjson::Value::object();
@@ -33,7 +25,9 @@ struct Plan {
 
 inline bool readFiniteNumber(matjson::Value const& value, char const* key, float& out) {
     if (!value.isObject() || !value.contains(key) || !value[key].isNumber()) return false;
-    auto number = value[key].asDouble();
+    auto result = value[key].asDouble();
+    if (!result) return false;
+    double number = result.unwrap();
     if (!std::isfinite(number) || number < -1000000.0 || number > 1000000.0) return false;
     out = static_cast<float>(number);
     return true;
@@ -47,9 +41,6 @@ inline bool readBoundedInt(matjson::Value const& value, char const* key, int min
     return true;
 }
 
-// Parse a complete JSON document. Unlike the previous regex parser, this does
-// not truncate nested objects at the first closing bracket and rejects malformed
-// JSON instead of silently applying a partial plan.
 inline bool parsePlanJSON(std::string const& text, Plan& out) {
     auto parsed = matjson::parse(text);
     if (!parsed || !parsed.unwrap().isObject()) return false;
@@ -59,7 +50,9 @@ inline bool parsePlanJSON(std::string const& text, Plan& out) {
 
     Plan candidate;
     if (root.contains("message") && root["message"].isString()) {
-        candidate.message = root["message"].asString();
+        auto message = root["message"].asString();
+        if (!message) return false;
+        candidate.message = message.unwrap();
     }
 
     auto const& items = root["placements"];
@@ -67,10 +60,13 @@ inline bool parsePlanJSON(std::string const& text, Plan& out) {
 
     for (auto const& item : items) {
         if (!item.isObject()) return false;
-
         PlannedObject p;
-        if (item.contains("kind") && item["kind"].isString()) {
-            auto kind = item["kind"].asString();
+
+        if (item.contains("kind")) {
+            if (!item["kind"].isString()) return false;
+            auto kindResult = item["kind"].asString();
+            if (!kindResult) return false;
+            auto kind = kindResult.unwrap();
             if (kind == "trigger") p.kind = PlannedObject::Kind::Trigger;
             else if (kind != "object") return false;
         }
