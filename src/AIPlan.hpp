@@ -83,15 +83,34 @@ inline bool parsePlanJSON(std::string const& text, Plan& out) {
         if (p.scale < 0.25f || p.scale > 2.5f || p.rotation < -360.f || p.rotation > 360.f) return false;
 
         if (p.kind == PlannedObject::Kind::Trigger) {
-            if (!readBoundedInt(item, "groupID", 0, 9999, p.groupID) ||
+            if (!item.contains("triggerType") || !item["triggerType"].isString()) return false;
+            auto typeResult = item["triggerType"].asString();
+            if (!typeResult) return false;
+            auto type = typeResult.unwrap();
+            if (type == "alpha") p.triggerType = PlannedObject::TriggerType::Alpha;
+            else if (type == "move") p.triggerType = PlannedObject::TriggerType::Move;
+            else if (type == "toggle") p.triggerType = PlannedObject::TriggerType::Toggle;
+            else if (type == "color") p.triggerType = PlannedObject::TriggerType::Color;
+            else return false;
+
+            if (!readBoundedInt(item, "groupID", 0, 9999, p.groupID)) return false;
+            if (p.triggerType == PlannedObject::TriggerType::Move &&
                 !readBoundedInt(item, "targetGroupID", 0, 9999, p.targetGroupID)) return false;
+            if (p.triggerType == PlannedObject::TriggerType::Color &&
+                !readBoundedInt(item, "colorID", 1, 1014, p.colorID)) return false;
+            if (item.contains("activateGroup")) {
+                if (!item["activateGroup"].isBool()) return false;
+                auto active = item["activateGroup"].asBool();
+                if (!active) return false;
+                p.activateGroup = active.unwrap();
+            }
+            if (item.contains("moveX") && !readFiniteNumber(item, "moveX", p.moveX)) return false;
+            if (item.contains("moveY") && !readFiniteNumber(item, "moveY", p.moveY)) return false;
+            if (item.contains("opacity") && !readFiniteNumber(item, "opacity", p.opacity)) return false;
             if (item.contains("duration") && !readFiniteNumber(item, "duration", p.duration)) return false;
             if (item.contains("easing") && !readBoundedInt(item, "easing", 0, 99, p.easing)) return false;
-            if (item.contains("properties")) {
-                if (!item["properties"].isObject()) return false;
-                p.properties = item["properties"];
-            }
-            if (p.duration < 0.f || p.duration > 600.f) return false;
+            if (p.duration < 0.f || p.duration > 600.f || p.opacity < 0.f || p.opacity > 1.f ||
+                p.moveX < -10000.f || p.moveX > 10000.f || p.moveY < -10000.f || p.moveY > 10000.f) return false;
         }
 
         candidate.items.push_back(std::move(p));
