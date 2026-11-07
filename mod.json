@@ -1,14 +1,10 @@
 {
   "geode": "5.11.1",
-  "gd": {
-    "android": "2.2081"
-  },
-  "id": "hoangphuc8848.auto-deco",
-  "name": "Auto Deco",
+  "gd": { "android": "2.2081" },
+  "id": "hoangphuc8848.gd-autobot",
+  "name": "GD AutoBot",
   "version": "v0.1.0",
   "developer": "hoangphuc8848",
-  "description": "In-editor AI chat powered by the OpenAI Responses API.",
-  "tags": [
-    "editor"
-  ]
+  "description": "Adaptive Geometry Dash autoplayer prototype with persistent learning memory.",
+  "tags": ["gameplay", "utility"]
 }
