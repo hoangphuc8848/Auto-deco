@@ -70,7 +70,7 @@ namespace {
 
     int placeEditorObject(LevelEditorLayer* editor, int objectID, cocos2d::CCPoint position, ccColor3B color) {
         if (!editor) return 0;
-        auto object = editor->createObject(objectID, position);
+        auto object = editor->createObject(objectID, position, false);
         if (!object) return 0;
         object->setObjectColor(color);
         return 1;
@@ -87,6 +87,27 @@ namespace {
             if (i % 2 == 0) placed += placeEditorObject(editor, 1, {center.x - 112.f + i * 32.f, center.y - 48.f}, ccc3(35, 35, 48));
         }
         for (int i = 0; i < 4; ++i) placed += placeEditorObject(editor, 1, {center.x - 48.f + i * 32.f, center.y - 16.f}, color);
+        return placed;
+    }
+
+    int buildTriggerSet(LevelEditorLayer* editor) {
+        if (!editor || !editor->m_objectLayer) return 0;
+        auto win = CCDirector::sharedDirector()->getWinSize();
+        auto center = editor->m_objectLayer->convertToNodeSpace({win.width * 0.5f, win.height * 0.5f});
+        // Vanilla trigger object IDs: Move, Pulse, Alpha, Toggle, Spawn.
+        // They are placed as editable trigger objects; target groups/settings remain user-configurable.
+        struct TriggerSpec { int id; float x; ccColor3B color; };
+        const TriggerSpec triggers[] = {
+            {901, -64.f, ccc3(80, 170, 255)},
+            {1006, -32.f, ccc3(255, 80, 160)},
+            {1007, 0.f, ccc3(255, 190, 80)},
+            {1049, 32.f, ccc3(245, 80, 80)},
+            {1268, 64.f, ccc3(80, 220, 130)}
+        };
+        int placed = 0;
+        for (auto const& trigger : triggers) {
+            placed += placeEditorObject(editor, trigger.id, {center.x + trigger.x, center.y + 32.f}, trigger.color);
+        }
         return placed;
     }
 
@@ -289,11 +310,15 @@ class $modify(OfflineAssistantEditorUI, EditorUI) {
         auto decoButton = CCMenuItemSpriteExtra::create(decoSprite, this, menu_selector(OfflineAssistantEditorUI::onApplyDeco));
         auto buildSprite = ButtonSprite::create("BUILD", 64, 0, 0.42f, true, "goldFont.fnt", "GJ_button_03.png", 20.f);
         auto buildButton = CCMenuItemSpriteExtra::create(buildSprite, this, menu_selector(OfflineAssistantEditorUI::onBuildGameplay));
+        auto triggerSprite = ButtonSprite::create("TRIGGERS", 76, 0, 0.42f, true, "goldFont.fnt", "GJ_button_04.png", 20.f);
+        auto triggerButton = CCMenuItemSpriteExtra::create(triggerSprite, this, menu_selector(OfflineAssistantEditorUI::onBuildTriggers));
         auto actionMenu = CCMenu::create();
         actionMenu->addChild(decoButton);
         actionMenu->addChild(buildButton);
-        decoButton->setPosition({-48.f, 0.f});
-        buildButton->setPosition({48.f, 0.f});
+        actionMenu->addChild(triggerButton);
+        decoButton->setPosition({-76.f, 0.f});
+        buildButton->setPosition({0.f, 0.f});
+        triggerButton->setPosition({76.f, 0.f});
         actionMenu->setPosition({35.f, -38.f});
         panel->addChild(actionMenu);
 
@@ -317,6 +342,12 @@ class $modify(OfflineAssistantEditorUI, EditorUI) {
         auto request = gdautobot::offline::parse(prompt);
         int count = buildGameplayObjects(m_editorLayer, request.difficulty);
         Notification::create(fmt::format("Offline Builder: placed {} gameplay objects", count), NotificationIcon::Info)->show();
+    }
+
+    void onBuildTriggers(CCObject*) {
+        if (!m_editorLayer) return;
+        int count = buildTriggerSet(m_editorLayer);
+        Notification::create(fmt::format("Offline Builder: placed {} editable trigger objects. Set target Group IDs in Edit Object.", count), NotificationIcon::Info)->show();
     }
 
     void onGenerate(CCObject*) {
