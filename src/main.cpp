@@ -4,6 +4,7 @@
 #include <Geode/binding/ButtonSprite.hpp>
 #include <Geode/binding/CCMenuItemSpriteExtra.hpp>
 #include <Geode/binding/GameObject.hpp>
+#include <Geode/binding/EffectGameObject.hpp>
 #include <Geode/binding/PlayerObject.hpp>
 #include <Geode/ui/TextInput.hpp>
 #include <Geode/ui/MDPopup.hpp>
@@ -73,6 +74,7 @@ namespace {
         auto object = editor->createObject(objectID, position, false);
         if (!object) return 0;
         object->setObjectColor(color);
+        object->addToGroup(9000);
         return 1;
     }
 
@@ -94,19 +96,29 @@ namespace {
         if (!editor || !editor->m_objectLayer) return 0;
         auto win = CCDirector::sharedDirector()->getWinSize();
         auto center = editor->m_objectLayer->convertToNodeSpace({win.width * 0.5f, win.height * 0.5f});
-        // Vanilla trigger object IDs: Move, Pulse, Alpha, Toggle, Spawn.
-        // They are placed as editable trigger objects; target groups/settings remain user-configurable.
-        struct TriggerSpec { int id; float x; ccColor3B color; };
+
+        // Generated objects use group 9000; effect triggers target that group.
+        struct TriggerSpec { int id; float x; ccColor3B color; bool hasGroupTarget; };
         const TriggerSpec triggers[] = {
-            {901, -64.f, ccc3(80, 170, 255)},
-            {1006, -32.f, ccc3(255, 80, 160)},
-            {1007, 0.f, ccc3(255, 190, 80)},
-            {1049, 32.f, ccc3(245, 80, 80)},
-            {1268, 64.f, ccc3(80, 220, 130)}
+            {899, -100.f, ccc3(255, 205, 70), false},  // Color
+            {901, -60.f, ccc3(80, 170, 255), true},    // Move
+            {1006, -20.f, ccc3(255, 80, 160), true},   // Pulse
+            {1007, 20.f, ccc3(255, 190, 80), true},    // Alpha
+            {1049, 60.f, ccc3(245, 80, 80), true},     // Toggle
+            {1268, 100.f, ccc3(80, 220, 130), true}    // Spawn
         };
+
         int placed = 0;
         for (auto const& trigger : triggers) {
-            placed += placeEditorObject(editor, trigger.id, {center.x + trigger.x, center.y + 32.f}, trigger.color);
+            auto object = editor->createObject(trigger.id, {center.x + trigger.x, center.y + 32.f}, false);
+            if (!object) continue;
+            object->setObjectColor(trigger.color);
+            if (trigger.hasGroupTarget) {
+                if (auto effect = typeinfo_cast<EffectGameObject*>(object)) {
+                    effect->setTargetID(9000);
+                }
+            }
+            ++placed;
         }
         return placed;
     }
@@ -347,7 +359,7 @@ class $modify(OfflineAssistantEditorUI, EditorUI) {
     void onBuildTriggers(CCObject*) {
         if (!m_editorLayer) return;
         int count = buildTriggerSet(m_editorLayer);
-        Notification::create(fmt::format("Offline Builder: placed {} editable trigger objects. Set target Group IDs in Edit Object.", count), NotificationIcon::Info)->show();
+        Notification::create(fmt::format("Auto Special: placed {} triggers; target group 9000 assigned. Set Color channel in Edit Object.", count), NotificationIcon::Info)->show();
     }
 
     void onGenerate(CCObject*) {
