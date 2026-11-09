@@ -6,6 +6,9 @@
 #include <Geode/binding/PlayerObject.hpp>
 #include <algorithm>
 #include <cmath>
+#include "OfflineAssistant.hpp"
+#include "AutoDecoEngine.hpp"
+#include "GameplayBuilder.hpp"
 
 using namespace geode::prelude;
 
