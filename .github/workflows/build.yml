@@ -13,7 +13,7 @@ jobs:
 
       - name: Build .geode (Android64)
         id: build
-        uses: geode-sdk/build-geode-mod@main
+        uses: ./.github/actions/build-geode-mod
         with:
           target: Android64
 
