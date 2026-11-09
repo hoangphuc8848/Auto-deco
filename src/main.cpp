@@ -14,6 +14,8 @@
 #include "OfflineAssistant.hpp"
 #include "AutoDecoEngine.hpp"
 #include "GameplayBuilder.hpp"
+#include "BotController.hpp"
+#include "LearningMemory.hpp"
 
 using namespace geode::prelude;
 
@@ -24,6 +26,9 @@ namespace {
     float g_cooldown = 0.f;
     GameObject* g_lastHazard = nullptr;
     CCLabelBMFont* g_status = nullptr;
+    gdautobot::LearningMemory g_memory;
+    gdautobot::Observation g_lastObservation;
+    bool g_deathHandled = false;
 
     void releaseJump(PlayerObject* player) {
         if (g_jumpHeld && player) player->releaseButton(PlayerButton::Jump);
@@ -39,11 +44,11 @@ namespace {
             g_cooldown = 0.f;
         }
         if (g_status) {
-            g_status->setString(enabled ? "BOT ON - CUBE TEST" : "BOT OFF");
+            g_status->setString(enabled ? "BOT ON - ADAPTIVE TEST" : "BOT OFF");
             g_status->setColor(enabled ? ccc3(255, 190, 40) : ccc3(255, 100, 100));
         }
         Notification::create(
-            enabled ? "AutoBot ON (experimental Cube controller)" : "AutoBot OFF",
+            enabled ? "AutoBot ON (adaptive controller test)" : "AutoBot OFF",
             NotificationIcon::Info
         )->show();
     }
@@ -221,59 +226,124 @@ class $modify(AutoBotPlayLayer, PlayLayer) {
 
     void update(float dt) {
         PlayLayer::update(dt);
-        if (!g_botEnabled || !m_player1 || m_player1->m_isDead || m_isPaused) {
+        if (!g_botEnabled || !m_player1 || m_isPaused) {
             if (g_jumpHeld) releaseJump(m_player1);
             return;
         }
-        if (m_player1->m_isShip || m_player1->m_isBird || m_player1->m_isBall ||
-            m_player1->m_isDart || m_player1->m_isRobot || m_player1->m_isSpider ||
-            m_player1->m_isSwing) {
-            releaseJump(m_player1);
+
+        // Observe death once, persist a failure sample, then retry the current run.
+        if (m_player1->m_isDead) {
+            if (!g_deathHandled) {
+                g_deathHandled = true;
+                releaseJump(m_player1);
+                auto key = gdautobot::BotController::situationKey(g_lastObservation);
+                gdautobot::FailureSample sample;
+                sample.playerX = g_lastObservation.playerX;
+                sample.playerY = g_lastObservation.playerY;
+                sample.speed = g_lastObservation.horizontalSpeed;
+                sample.action = static_cast<uint8_t>(gdautobot::Action::Press);
+                g_memory.recordFailure(key, sample);
+                g_lastHazard = nullptr;
+                g_cooldown = 0.f;
+                PlayLayer::resetLevel();
+                return;
+            }
             return;
         }
+        g_deathHandled = false;
+
+        auto* player = m_player1;
+        gdautobot::Observation obs;
+        obs.playerX = player->getPositionX();
+        obs.playerY = player->getPositionY();
+        obs.horizontalSpeed = std::max(1.f, player->m_playerSpeed);
+        obs.grounded = player->m_isOnGround;
+        if (player->m_isShip) obs.mode = gdautobot::Mode::Ship;
+        else if (player->m_isDart) obs.mode = gdautobot::Mode::Wave;
+        else if (player->m_isBird) obs.mode = gdautobot::Mode::UFO;
+        else if (player->m_isBall) obs.mode = gdautobot::Mode::Ball;
+        else if (player->m_isRobot) obs.mode = gdautobot::Mode::Robot;
+        else if (player->m_isSpider) obs.mode = gdautobot::Mode::Spider;
+        else if (player->m_isSwing) obs.mode = gdautobot::Mode::Swing;
+        else obs.mode = gdautobot::Mode::Cube;
 
         g_cooldown = std::max(0.f, g_cooldown - dt);
         if (g_jumpHeld) {
             g_jumpPulse -= dt;
-            if (g_jumpPulse <= 0.f) releaseJump(m_player1);
+            if (g_jumpPulse <= 0.f) releaseJump(player);
         }
 
         auto objects = m_objects;
         if (!objects) return;
-        const float px = m_player1->getPositionX();
-        const float speed = std::max(1.f, m_player1->m_playerSpeed);
         GameObject* nearest = nullptr;
         float nearestDistance = 1e9f;
+        float hazardY = obs.playerY;
         for (unsigned int i = 0; i < objects->count(); ++i) {
             auto obj = typeinfo_cast<GameObject*>(objects->objectAtIndex(i));
             if (!obj || static_cast<int>(obj->m_objectType) != 2) continue;
             auto rect = obj->getObjectRect();
             const float left = rect.origin.x;
             const float right = left + rect.size.width;
-            const float distance = left - px;
-            if (right <= px || distance < -8.f || distance > 150.f) continue;
+            const float distance = left - obs.playerX;
+            if (right <= obs.playerX || distance < -8.f || distance > 190.f) continue;
             if (distance < nearestDistance) {
                 nearestDistance = distance;
                 nearest = obj;
+                hazardY = rect.origin.y + rect.size.height * 0.5f;
             }
         }
-        const float reactionDistance = std::clamp(speed * 0.22f, 24.f, 58.f);
-        if (nearest && nearest != g_lastHazard && nearestDistance <= reactionDistance &&
-            nearestDistance >= -8.f && g_cooldown <= 0.f && !g_jumpHeld) {
-            m_player1->pushButton(PlayerButton::Jump);
-            g_jumpHeld = true;
-            g_jumpPulse = 0.075f;
-            g_cooldown = 0.28f;
-            g_lastHazard = nearest;
+
+        obs.hazardVisible = nearest != nullptr;
+        obs.nearestHazardX = obs.playerX + nearestDistance;
+        obs.nearestHazardY = hazardY;
+        auto key = gdautobot::BotController::situationKey(obs);
+        auto learned = g_memory.find(key);
+        float learnedBias = learned ? std::min(22.f, static_cast<float>(learned->failures) * 2.f) : 0.f;
+        float reaction = std::clamp(obs.horizontalSpeed * 0.22f + learnedBias, 24.f, 78.f);
+
+        // Modes with continuous vertical control use the visible playfield as a
+        // coarse corridor. Discrete modes use obstacle-triggered short taps.
+        auto win = CCDirector::sharedDirector()->getWinSize();
+        bool continuous = obs.mode == gdautobot::Mode::Ship ||
+                          obs.mode == gdautobot::Mode::Wave ||
+                          obs.mode == gdautobot::Mode::Swing;
+        if (continuous) {
+            float low = win.height * 0.30f;
+            float high = win.height * 0.70f;
+            bool shouldHold = player->getPositionY() < low;
+            bool shouldRelease = player->getPositionY() > high;
+            if (shouldHold && !g_jumpHeld) {
+                player->pushButton(PlayerButton::Jump);
+                g_jumpHeld = true;
+                g_jumpPulse = 0.20f;
+            } else if (shouldRelease && g_jumpHeld) {
+                releaseJump(player);
+            }
+        } else {
+            float modeReaction = reaction;
+            if (obs.mode == gdautobot::Mode::UFO) modeReaction *= 1.05f;
+            if (obs.mode == gdautobot::Mode::Ball) modeReaction *= 0.95f;
+            if (obs.mode == gdautobot::Mode::Spider) modeReaction *= 1.15f;
+            if (obs.mode == gdautobot::Mode::Robot) modeReaction *= 1.10f;
+            if (nearest && nearest != g_lastHazard && nearestDistance <= modeReaction &&
+                nearestDistance >= -8.f && g_cooldown <= 0.f && !g_jumpHeld) {
+                player->pushButton(PlayerButton::Jump);
+                g_jumpHeld = true;
+                g_jumpPulse = obs.mode == gdautobot::Mode::Robot ? 0.12f : 0.075f;
+                g_cooldown = obs.mode == gdautobot::Mode::UFO ? 0.20f : 0.28f;
+                g_lastHazard = nearest;
+            }
         }
-        if (!nearest || nearestDistance > 95.f || nearestDistance < -8.f)
+        if (!nearest || nearestDistance > 105.f || nearestDistance < -8.f)
             g_lastHazard = nullptr;
+        g_lastObservation = obs;
     }
 
     void resetLevel() {
         releaseJump(m_player1);
         g_lastHazard = nullptr;
         g_cooldown = 0.f;
+        g_deathHandled = false;
         PlayLayer::resetLevel();
     }
 
@@ -372,5 +442,5 @@ class $modify(OfflineAssistantEditorUI, EditorUI) {
 };
 
 $on_mod(Loaded) {
-    log::info("GD AutoBot loaded: offline editor assistant + experimental Cube controller");
+    log::info("GD AutoBot loaded: offline editor assistant + adaptive multi-mode controller");
 }
