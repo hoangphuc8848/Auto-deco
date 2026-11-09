@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 namespace gdautobot {
- enum class Mode : uint8_t { Cube, Ship, Ball, UFO, Wave, Robot, Spider, Unknown };
+ enum class Mode : uint8_t { Cube, Ship, Ball, UFO, Wave, Robot, Spider, Swing, Unknown };
  struct FailureSample {
   float playerX=0.f, playerY=0.f, speed=0.f;
   uint8_t action=0;
