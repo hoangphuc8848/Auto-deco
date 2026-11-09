@@ -105,9 +105,8 @@ class $modify(AutoBotPlayLayer, PlayLayer) {
             auto obj = typeinfo_cast<GameObject*>(objects->objectAtIndex(i));
             if (!obj || static_cast<int>(obj->m_objectType) != 2) continue; // Hazard
             auto rect = obj->getObjectRect();
-            if (!rect) continue;
-            const float left = rect->origin.x;
-            const float right = left + rect->size.width;
+            const float left = rect.origin.x;
+            const float right = left + rect.size.width;
             const float distance = left - px;
             if (right <= px || distance < -8.f || distance > 150.f) continue;
             if (distance < nearestDistance) {
