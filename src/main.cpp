@@ -60,6 +60,49 @@ namespace {
         return "Unknown";
     }
 
+    ccColor3B themeColor(std::string const& theme) {
+        if (theme == "hell") return ccc3(235, 55, 35);
+        if (theme == "space") return ccc3(55, 190, 255);
+        if (theme == "forest") return ccc3(80, 190, 95);
+        if (theme == "nine-circles") return ccc3(255, 55, 145);
+        return ccc3(35, 225, 235);
+    }
+
+    int placeEditorObject(LevelEditorLayer* editor, int objectID, cocos2d::CCPoint position, ccColor3B color) {
+        if (!editor) return 0;
+        auto object = editor->createObject(objectID, position);
+        if (!object) return 0;
+        object->setObjectColor(color);
+        return 1;
+    }
+
+    int applyDecoration(LevelEditorLayer* editor, std::string const& theme) {
+        if (!editor || !editor->m_objectLayer) return 0;
+        auto win = CCDirector::sharedDirector()->getWinSize();
+        auto center = editor->m_objectLayer->convertToNodeSpace({win.width * 0.5f, win.height * 0.5f});
+        auto color = themeColor(theme);
+        int placed = 0;
+        for (int i = 0; i < 8; ++i) {
+            placed += placeEditorObject(editor, 1, {center.x - 112.f + i * 32.f, center.y - 80.f}, color);
+            if (i % 2 == 0) placed += placeEditorObject(editor, 1, {center.x - 112.f + i * 32.f, center.y - 48.f}, ccc3(35, 35, 48));
+        }
+        for (int i = 0; i < 4; ++i) placed += placeEditorObject(editor, 1, {center.x - 48.f + i * 32.f, center.y - 16.f}, color);
+        return placed;
+    }
+
+    int buildGameplayObjects(LevelEditorLayer* editor, int difficulty) {
+        if (!editor || !editor->m_objectLayer) return 0;
+        auto win = CCDirector::sharedDirector()->getWinSize();
+        auto center = editor->m_objectLayer->convertToNodeSpace({win.width * 0.5f, win.height * 0.5f});
+        int placed = 0;
+        const float startX = center.x + 80.f;
+        const float floorY = center.y - 80.f;
+        for (int i = 0; i < 12; ++i) placed += placeEditorObject(editor, 1, {startX + i * 30.f, floorY}, ccc3(80, 145, 220));
+        const int spikeEvery = difficulty >= 8 ? 2 : 3;
+        for (int i = 2; i < 11; i += spikeEvery) placed += placeEditorObject(editor, 8, {startX + i * 30.f, floorY + 30.f}, ccc3(245, 90, 90));
+        if (difficulty >= 7) for (int i = 0; i < 3; ++i) placed += placeEditorObject(editor, 1, {startX + 240.f + i * 30.f, floorY + 30.f}, ccc3(80, 145, 220));
+        return placed;
+    }
     std::string makeAssistantAnswer(std::string const& prompt) {
         using namespace gdautobot;
         auto request = offline::parse(prompt);
@@ -236,17 +279,44 @@ class $modify(OfflineAssistantEditorUI, EditorUI) {
         m_fields->prompt = input;
 
         auto buttonSprite = ButtonSprite::create("GENERATE", 76, 0, 0.48f, true, "goldFont.fnt", "GJ_button_01.png", 20.f);
-        auto button = CCMenuItemSpriteExtra::create(
-            buttonSprite, this, menu_selector(OfflineAssistantEditorUI::onGenerate)
-        );
+        auto button = CCMenuItemSpriteExtra::create(buttonSprite, this, menu_selector(OfflineAssistantEditorUI::onGenerate));
         auto menu = CCMenu::create();
         menu->addChild(button);
         menu->setPosition({115.f, 0.f});
         panel->addChild(menu);
 
+        auto decoSprite = ButtonSprite::create("APPLY DECO", 88, 0, 0.42f, true, "goldFont.fnt", "GJ_button_02.png", 20.f);
+        auto decoButton = CCMenuItemSpriteExtra::create(decoSprite, this, menu_selector(OfflineAssistantEditorUI::onApplyDeco));
+        auto buildSprite = ButtonSprite::create("BUILD", 64, 0, 0.42f, true, "goldFont.fnt", "GJ_button_03.png", 20.f);
+        auto buildButton = CCMenuItemSpriteExtra::create(buildSprite, this, menu_selector(OfflineAssistantEditorUI::onBuildGameplay));
+        auto actionMenu = CCMenu::create();
+        actionMenu->addChild(decoButton);
+        actionMenu->addChild(buildButton);
+        decoButton->setPosition({-48.f, 0.f});
+        buildButton->setPosition({48.f, 0.f});
+        actionMenu->setPosition({35.f, -38.f});
+        panel->addChild(actionMenu);
+
         panel->setPosition({win.width - 155.f, 82.f});
         this->addChild(panel, 10000);
         return true;
+    }
+
+    void onApplyDeco(CCObject*) {
+        if (!m_editorLayer) return;
+        std::string prompt = m_fields->prompt ? m_fields->prompt->getString() : "";
+        auto request = gdautobot::offline::parse(prompt);
+        auto theme = request.theme.empty() ? std::string("tech") : request.theme;
+        int count = applyDecoration(m_editorLayer, theme);
+        Notification::create(fmt::format("Offline Builder: placed {} accent blocks", count), NotificationIcon::Info)->show();
+    }
+
+    void onBuildGameplay(CCObject*) {
+        if (!m_editorLayer) return;
+        std::string prompt = m_fields->prompt ? m_fields->prompt->getString() : "";
+        auto request = gdautobot::offline::parse(prompt);
+        int count = buildGameplayObjects(m_editorLayer, request.difficulty);
+        Notification::create(fmt::format("Offline Builder: placed {} gameplay objects", count), NotificationIcon::Info)->show();
     }
 
     void onGenerate(CCObject*) {
